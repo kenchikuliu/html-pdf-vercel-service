@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>URL/HTML 转 PDF 服务</title>
+  <style>
+    :root {
+      --bg: #f6f7fb;
+      --card: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --line: #d1d5db;
+      --brand: #0f766e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "SF Pro Text", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: linear-gradient(180deg, #f6f7fb, #eef2ff);
+      color: var(--text);
+      padding: 24px;
+    }
+    .wrap { max-width: 980px; margin: 0 auto; }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+    h1 { margin: 0 0 8px; font-size: 24px; }
+    p { margin: 0; color: var(--muted); }
+    .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+    .full { grid-column: 1 / -1; }
+    label { display: block; font-weight: 600; margin-bottom: 6px; font-size: 14px; }
+    input, select, textarea {
+      width: 100%; border: 1px solid var(--line); border-radius: 8px;
+      padding: 9px 10px; font-size: 14px; background: white;
+    }
+    textarea { min-height: 140px; resize: vertical; }
+    .row { display: flex; align-items: center; gap: 10px; }
+    .row > input[type="checkbox"] { width: auto; }
+    button {
+      border: 0; background: var(--brand); color: white; border-radius: 10px;
+      padding: 11px 16px; font-weight: 700; cursor: pointer;
+    }
+    .tip { font-size: 12px; color: var(--muted); }
+    .result { margin-top: 10px; font-size: 13px; color: var(--muted); }
+    @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>PDF 生成服务</h1>
+      <p>支持 URL/HTML 转 PDF、logo 放页眉/页脚、页眉页脚文本左中右对齐。</p>
+    </div>
+
+    <div class="card grid">
+      <div class="full">
+        <label>URL（与 HTML 二选一）</label>
+        <input id="url" placeholder="https://example.com" />
+      </div>
+      <div class="full">
+        <label>HTML（可选）</label>
+        <textarea id="html" placeholder="<html>...</html>"></textarea>
+      </div>
+      <div>
+        <label>等待渲染 (ms)</label>
+        <input id="waitMs" type="number" value="2000" min="0" max="30000" />
+      </div>
+      <div>
+        <label>纸张</label>
+        <select id="format">
+          <option>A4</option>
+          <option>A3</option>
+          <option>Letter</option>
+          <option>Legal</option>
+        </select>
+      </div>
+      <div class="row">
+        <input id="landscape" type="checkbox" />
+        <label for="landscape" style="margin:0">横向</label>
+      </div>
+      <div class="row">
+        <input id="printBackground" type="checkbox" checked />
+        <label for="printBackground" style="margin:0">打印背景</label>
+      </div>
+    </div>
+
+    <div class="card grid">
+      <div class="full"><strong>Logo 设置</strong></div>
+      <div>
+        <label>上传 Logo</label>
+        <input id="logoFile" type="file" accept="image/*" />
+      </div>
+      <div>
+        <label>位置</label>
+        <select id="logoPosition">
+          <option value="header-left">页眉左</option>
+          <option value="header-center">页眉中</option>
+          <option value="header-right">页眉右</option>
+          <option value="footer-left">页脚左</option>
+          <option value="footer-center">页脚中</option>
+          <option value="footer-right">页脚右</option>
+        </select>
+      </div>
+      <div>
+        <label>Logo 高度 (mm)</label>
+        <input id="logoHeight" type="number" value="10" min="4" max="30" />
+      </div>
+      <div class="tip">不上传 logo 就不会渲染 logo 区域。</div>
+    </div>
+
+    <div class="card grid">
+      <div class="full"><strong>页眉文字</strong></div>
+      <div>
+        <label>文字</label>
+        <input id="headerText" placeholder="例如：内部资料" />
+      </div>
+      <div>
+        <label>对齐</label>
+        <select id="headerAlign">
+          <option value="left">左</option>
+          <option value="center" selected>中</option>
+          <option value="right">右</option>
+        </select>
+      </div>
+      <div>
+        <label>字号(px)</label>
+        <input id="headerFontSize" type="number" value="11" min="8" max="24" />
+      </div>
+      <div>
+        <label>颜色</label>
+        <input id="headerColor" type="text" value="#111827" />
+      </div>
+    </div>
+
+    <div class="card grid">
+      <div class="full"><strong>页脚文字</strong></div>
+      <div>
+        <label>文字</label>
+        <input id="footerText" placeholder="例如：Confidential" />
+      </div>
+      <div>
+        <label>对齐</label>
+        <select id="footerAlign">
+          <option value="left">左</option>
+          <option value="center" selected>中</option>
+          <option value="right">右</option>
+        </select>
+      </div>
+      <div>
+        <label>字号(px)</label>
+        <input id="footerFontSize" type="number" value="11" min="8" max="24" />
+      </div>
+      <div>
+        <label>颜色</label>
+        <input id="footerColor" type="text" value="#111827" />
+      </div>
+    </div>
+
+    <div class="card">
+      <button id="generateBtn">生成 PDF</button>
+      <div class="result" id="result"></div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    function fileToDataUrl(file) {
+      return new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(r.result);
+        r.onerror = reject;
+        r.readAsDataURL(file);
+      });
+    }
+
+    $('generateBtn').addEventListener('click', async () => {
+      const result = $('result');
+      result.textContent = '生成中...';
+
+      try {
+        const logoFile = $('logoFile').files[0];
+        const logoDataUrl = logoFile ? await fileToDataUrl(logoFile) : null;
+
+        const payload = {
+          url: $('url').value.trim() || undefined,
+          html: $('html').value.trim() || undefined,
+          waitMs: Number($('waitMs').value || 2000),
+          format: $('format').value,
+          landscape: $('landscape').checked,
+          printBackground: $('printBackground').checked,
+          header: {
+            enabled: Boolean($('headerText').value.trim()),
+            text: $('headerText').value,
+            align: $('headerAlign').value,
+            fontSize: Number($('headerFontSize').value || 11),
+            color: $('headerColor').value || '#111827'
+          },
+          footer: {
+            enabled: Boolean($('footerText').value.trim()),
+            text: $('footerText').value,
+            align: $('footerAlign').value,
+            fontSize: Number($('footerFontSize').value || 11),
+            color: $('footerColor').value || '#111827'
+          },
+          logo: {
+            enabled: Boolean(logoDataUrl),
+            dataUrl: logoDataUrl,
+            position: $('logoPosition').value,
+            maxHeightMm: Number($('logoHeight').value || 10)
+          }
+        };
+
+        if (!payload.url && !payload.html) {
+          throw new Error('请填写 URL 或 HTML 任意一个');
+        }
+
+        const res = await fetch('/api/pdf', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) {
+          const e = await res.json().catch(() => ({ error: '生成失败' }));
+          throw new Error(e.error || '生成失败');
+        }
+
+        const blob = await res.blob();
+        const fileUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = fileUrl;
+        a.download = 'export.pdf';
+        a.click();
+        URL.revokeObjectURL(fileUrl);
+        result.textContent = '已生成并开始下载。';
+      } catch (err) {
+        result.textContent = `失败：${err.message}`;
+      }
+    });
+  </script>
+</body>
+</html>

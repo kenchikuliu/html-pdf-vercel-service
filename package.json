@@ -1,0 +1,17 @@
+{
+  "name": "html-pdf-vercel-service",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "start": "vercel dev"
+  },
+  "dependencies": {
+    "@sparticuz/chromium": "^123.0.1",
+    "playwright-core": "^1.54.2"
+  },
+  "devDependencies": {
+    "vercel": "^46.0.0"
+  }
+}
