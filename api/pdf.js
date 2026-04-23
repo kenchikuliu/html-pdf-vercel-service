@@ -133,7 +133,7 @@ async function launchBrowser() {
     return playwrightChromium.launch({
       args: chromium.args,
       executablePath,
-      headless: chromium.headless
+      headless: true
     });
   }
 
