@@ -123,6 +123,11 @@ function escapeAttr(s) {
 }
 
 async function launchBrowser() {
+  const wsEndpoint = process.env.BROWSER_WS_ENDPOINT;
+  if (wsEndpoint) {
+    return puppeteer.connect({ browserWSEndpoint: wsEndpoint });
+  }
+
   const isVercel = Boolean(process.env.VERCEL);
 
   if (isVercel) {
@@ -232,6 +237,10 @@ export default async function handler(req, res) {
     if (browser) {
       try { await browser.close(); } catch {}
     }
-    return json(res, 400, { ok: false, error: err?.message || 'Failed to generate PDF' });
+    const message = err?.message || 'Failed to generate PDF';
+    const hint = process.env.VERCEL && !process.env.BROWSER_WS_ENDPOINT
+      ? 'Vercel runtime missing local Chromium deps; set BROWSER_WS_ENDPOINT to Browserless/Playwright remote endpoint.'
+      : undefined;
+    return json(res, 400, { ok: false, error: message, hint });
   }
 }

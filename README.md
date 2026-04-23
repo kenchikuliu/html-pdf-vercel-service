@@ -40,3 +40,15 @@ Body JSON (example):
   }
 }
 ```
+
+## Deploy Notes (Vercel)
+
+If local Chromium fails on Vercel (missing shared libs), set a remote browser endpoint:
+
+- Env var: `BROWSER_WS_ENDPOINT`
+- Example provider: Browserless (`wss://...`)
+
+Then the API uses remote Chromium via WebSocket and remains fully compatible with:
+
+- logo in header/footer
+- header/footer text left/center/right alignment
