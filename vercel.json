@@ -1,7 +1,7 @@
 {
   "functions": {
     "api/pdf.js": {
-      "memory": 3008,
+      "runtime": "nodejs18.x",
       "maxDuration": 60
     }
   }
