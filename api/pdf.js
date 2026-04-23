@@ -1,5 +1,5 @@
 import chromium from '@sparticuz/chromium';
-import { chromium as playwrightChromium } from 'playwright-core';
+import puppeteer from 'puppeteer-core';
 
 function json(res, status, payload) {
   res.statusCode = status;
@@ -25,7 +25,7 @@ function sanitizeLogoPosition(v) {
 
 function toMm(v, fallback) {
   const n = Number(v);
-  if (!Number.isFinite(n) || n < 0) return fallback;
+  if (!Number.isFinite(n) || n < 0) return `${fallback}mm`;
   return `${n}mm`;
 }
 
@@ -91,11 +91,7 @@ function buildBarHtml(kind, cfg, logoCfg) {
     return '';
   }
 
-  const slots = {
-    left: '',
-    center: '',
-    right: ''
-  };
+  const slots = { left: '', center: '', right: '' };
 
   if (enabled && text) {
     slots[align] += `<span style="font-size:${fontSizePx}px;color:${color};">${escapeHtml(text)}</span>`;
@@ -128,16 +124,20 @@ function escapeAttr(s) {
 
 async function launchBrowser() {
   const isVercel = Boolean(process.env.VERCEL);
+
   if (isVercel) {
     const executablePath = await chromium.executablePath();
-    return playwrightChromium.launch({
+    return puppeteer.launch({
       args: chromium.args,
+      defaultViewport: { width: 1440, height: 2200 },
       executablePath,
       headless: true
     });
   }
 
-  return playwrightChromium.launch({
+  const localExecutable = process.env.CHROME_EXECUTABLE_PATH || '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
+  return puppeteer.launch({
+    executablePath: localExecutable,
     headless: true,
     args: ['--no-sandbox', '--disable-dev-shm-usage']
   });
@@ -148,6 +148,7 @@ export default async function handler(req, res) {
     return json(res, 405, { ok: false, error: 'Method not allowed' });
   }
 
+  let browser;
   try {
     const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
 
@@ -174,13 +175,15 @@ export default async function handler(req, res) {
     const footer = body?.footer || { enabled: false };
     const logo = body?.logo || { enabled: false };
 
-    const browser = await launchBrowser();
-    const page = await browser.newPage({
-      viewport: {
+    browser = await launchBrowser();
+    const page = await browser.newPage();
+
+    if (body?.viewportWidth || body?.viewportHeight) {
+      await page.setViewport({
         width: Number(body?.viewportWidth || 1440),
         height: Number(body?.viewportHeight || 2200)
-      }
-    });
+      });
+    }
 
     if (url) {
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
@@ -189,7 +192,7 @@ export default async function handler(req, res) {
     }
 
     if (waitMs > 0) {
-      await page.waitForTimeout(waitMs);
+      await new Promise((r) => setTimeout(r, waitMs));
     }
 
     const printCss = buildPrintCss({ header, footer, logo });
@@ -199,19 +202,9 @@ export default async function handler(req, res) {
     await page.addStyleTag({ content: printCss });
     await page.evaluate(
       ({ headerMarkup, footerMarkup }) => {
-        const removeIfExists = (selector) => {
-          document.querySelectorAll(selector).forEach((n) => n.remove());
-        };
-
-        removeIfExists('.pdf-fixed-header');
-        removeIfExists('.pdf-fixed-footer');
-
-        if (headerMarkup) {
-          document.body.insertAdjacentHTML('beforeend', headerMarkup);
-        }
-        if (footerMarkup) {
-          document.body.insertAdjacentHTML('beforeend', footerMarkup);
-        }
+        document.querySelectorAll('.pdf-fixed-header,.pdf-fixed-footer').forEach((n) => n.remove());
+        if (headerMarkup) document.body.insertAdjacentHTML('beforeend', headerMarkup);
+        if (footerMarkup) document.body.insertAdjacentHTML('beforeend', footerMarkup);
       },
       { headerMarkup: headerHtml, footerMarkup: footerHtml }
     );
@@ -236,6 +229,9 @@ export default async function handler(req, res) {
     res.setHeader('Content-Disposition', 'inline; filename="export.pdf"');
     res.end(Buffer.from(pdfBuffer));
   } catch (err) {
+    if (browser) {
+      try { await browser.close(); } catch {}
+    }
     return json(res, 400, { ok: false, error: err?.message || 'Failed to generate PDF' });
   }
 }
